@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script src="http://192.168.1.25:6789/socket.io/socket.io.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+	<title>Simple Voting App</title>
+	<style>
+		text {
+			font-family: sans-serif;
+			font-size: 12px;
+			fill: white;
+		}
+		form {
+			position: absolute;
+			right: 10px;
+			top: 10px;
+		}
+		button {
+			width: 100px;
+		}
+		#container {
+			margin-left: 35%;
+		}
+	</style>
+</head>
+</body>
+<script type="text/javascript">
+
+$(document).ready(function() {
+
+	var socket = io.connect('http://192.168.1.25:6789');
+
+	function draw_pie_chart (dataset) {
+		var w = 300;
+		var h = 300;
+		var outerRadius = w / 2;
+		var innerRadius = 0;
+		var arc = d3.svg.arc()
+			.innerRadius(innerRadius)
+			.outerRadius(outerRadius);
+
+		var pie = d3.layout.pie();
+
+		var color = d3.scale.category10();
+
+		var svg = d3.select("#pie_chart")
+			.append("svg")
+			.attr("width", w)
+			.attr("height", h);
+
+		var arcs = svg.selectAll("g.arc")
+		  .data(pie(dataset))
+		  .enter()
+		  .append("g")
+		  .attr("class", "arc")
+		  .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+
+		arcs.append("path")
+	    .attr("fill", function(d, i) {
+	    	return color(i);
+	    })
+	    .attr("d", arc);
+
+		arcs.append("text")
+	    .attr("transform", function(d) {
+	    	return "translate(" + arc.centroid(d) + ")";
+	    })
+	    .attr("text-anchor", "middle")
+	    .text(function(d) {
+	    	return d.value;
+	    });
+		};
+
+		$('.btn').on('click', function() {
+			socket.emit('vote', {
+				name: $(this).val(),
+				id: $(this).attr('data-id')
+			});
+			return false;
+	  });
+
+	  socket.emit('open', {});
+
+	  socket.on('update', function (data) {
+	  	data = JSON.parse(data);
+	  	var pie_data = [];
+	  	for (var i = 0; i < data.length; i++) {
+	  		pie_data.push(data[i].count);
+	  	}
+	  	$('#pie_chart').html('');
+	  	draw_pie_chart(pie_data);
+	  });
+
+	  socket.on('all', function (data) {
+	  	data = JSON.parse(data);
+	  	var pie_data = [];
+	  	for (var i = 0; i < data.length; i++) {
+	  		pie_data.push(data[i].count);
+	  	}
+	  	$('#pie_chart').html('');
+	  	draw_pie_chart(pie_data);
+	  });
+	});
+</script>
+<div id="container">
+	<div id="pie_chart"></div>
+	<button class="btn btn-primary" value="PHP" data-id="1">PHP</button>
+	<button class="btn btn-primary" value="JavaScript" data-id="2">JavaScript</button>
+	<button class="btn btn-primary" value="Ruby" data-id="3">Ruby</button>
+</div>
+</body>
+</html>
